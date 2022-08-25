@@ -80,7 +80,7 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
         # Trying to turn on yellow light
         if turn_yellow:
             self.conn.trafficlight.setPhase(
-                junction_with_lights, current_state + 1)
+                junction_with_lights, current_state * 2 + 1)
 
             delta_yellow_time = 0
             while delta_yellow_time < self.yellow_time:
