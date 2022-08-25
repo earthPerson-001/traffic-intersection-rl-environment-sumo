@@ -23,6 +23,9 @@ class TrafficIntersectionEnvSingleLaneGUI(gym.Env):
     def __init__(self) -> None:
         super().__init__()
 
+        print("This environment isn't implemented yet.")
+        sys.exit("This environment isn't implemented yet.")
+
     def step(self, action):
         pass
 
