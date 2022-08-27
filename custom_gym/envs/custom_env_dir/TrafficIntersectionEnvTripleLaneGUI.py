@@ -9,7 +9,7 @@ from time import sleep
 
 # checking for sumo_home variable and exiting if it is not found
 if 'SUMO_HOME' in os.environ:
-    tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
+    tools: str = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
@@ -24,17 +24,16 @@ from generateRouteFile import generate_routefile
 
 TRAFFIC_INTERSECTION_TYPE = "triple"
 file_separator = os.path.sep
-POSSIBLE_TRAFFIC_LIGHT_CONFIGURATION = 4
-TOTAL_NUMBER_OF_LANES = 24
-NUMBER_OF_LANES_TO_OBSERVE = TOTAL_NUMBER_OF_LANES/2
+POSSIBLE_TRAFFIC_LIGHT_CONFIGURATION = int(4)
+TOTAL_NUMBER_OF_LANES = int(24)
+NUMBER_OF_LANES_TO_OBSERVE = int(TOTAL_NUMBER_OF_LANES / 2)
 
 
 class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
 
     CONNECTION_LABEL = 0
 
-    def __init__(self, sumocfg_file, network_file, route_file, use_gui=True, total_timesteps=5000, delta_time=30, min_green=15, max_green=120, yellow_time=7) -> None:
-        super().__init__()
+    def __init__(self, sumocfg_file: str, network_file: str, route_file: str, use_gui: bool = True, total_timesteps: int = 5000, delta_time: int=30, min_green: int=15, max_green: int=120, yellow_time: int=7) -> None:
 
         self.sumocfg_file = sumocfg_file
         self.network_file = network_file
@@ -51,8 +50,17 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
         self.min_green = min_green
         self.max_green = max_green
         self.yellow_time = yellow_time
+
+        self.lanes_to_observe = ["E0_0", "E0_1", "E0_2",
+                                 "-E1_0", "-E1_1", "-E1_2",
+                                 "-E2_0", "-E2_1", "-E2_2",
+                                 "-E3_0", "-E3_1", "-E3_2"]
+
         self.label = TrafficIntersectionEnvTripleLaneGUI.CONNECTION_LABEL
         TrafficIntersectionEnvTripleLaneGUI.CONNECTION_LABEL += 1
+
+        # for reward calculation
+        self.last_waiting_time: float = 0
 
         if use_gui:
             sumoBinary = sumolib.checkBinary('sumo-gui')
@@ -60,7 +68,7 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
             sumoBinary = sumolib.checkBinary('sumo')
 
         self.sumoBinary = sumoBinary
-        self.conn = None
+        self.conn: traci = None
 
     def step(self, action):
 
@@ -84,7 +92,13 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
 
             delta_yellow_time = 0
             while delta_yellow_time < self.yellow_time:
+
+                # Remove if unnecessary
+                # Testing if phase duration defined in *.net.xml takes precedence over the traci.setPhase()
+                self.conn.trafficlight.setPhase(junction_with_lights, current_state + 1)
+
                 self.conn.simulationStep()
+
                 delta_yellow_time += 1
 
         # Setting the required phase
@@ -93,6 +107,10 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
 
         delta_green_time = 0
         while delta_green_time < self.min_green:
+            # Remove if unnecessary
+            # Testing if phase duration defined in *.net.xml takes precedence over the traci.setPhase()
+            self.conn.trafficlight.setPhase(junction_with_lights, action * 2)
+
             self.conn.simulationStep()
             delta_green_time += 1
 
@@ -101,26 +119,11 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
             done = True
             self.reset()
 
-        vehicle_count_lane_0 = self.conn.lane.getLastStepVehicleNumber("E0_0")
-        vehicle_count_lane_1 = self.conn.lane.getLastStepVehicleNumber("E0_1")
-        vehicle_count_lane_2 = self.conn.lane.getLastStepVehicleNumber("E0_2")
+        lanes_observation = numpy.zeros(int(NUMBER_OF_LANES_TO_OBSERVE))
+        for i, lane in enumerate(self.lanes_to_observe):
+            lanes_observation[i] = self.conn.lane.getLastStepVehicleNumber(lane)
 
-        vehicle_count_lane_3 = self.conn.lane.getLastStepVehicleNumber("-E1_0")
-        vehicle_count_lane_4 = self.conn.lane.getLastStepVehicleNumber("-E1_1")
-        vehicle_count_lane_5 = self.conn.lane.getLastStepVehicleNumber("-E1_2")
-
-        vehicle_count_lane_6 = self.conn.lane.getLastStepVehicleNumber("-E2_0")
-        vehicle_count_lane_7 = self.conn.lane.getLastStepVehicleNumber("-E2_1")
-        vehicle_count_lane_8 = self.conn.lane.getLastStepVehicleNumber("-E2_2")
-
-        vehicle_count_lane_9  = self.conn.lane.getLastStepVehicleNumber("-E3_0")
-        vehicle_count_lane_10 = self.conn.lane.getLastStepVehicleNumber("-E3_1")
-        vehicle_count_lane_11 = self.conn.lane.getLastStepVehicleNumber("-E3_2")
-
-        lanes_observation = [vehicle_count_lane_0, vehicle_count_lane_1, vehicle_count_lane_2, vehicle_count_lane_3,
-                             vehicle_count_lane_4, vehicle_count_lane_5, vehicle_count_lane_6, vehicle_count_lane_7,
-                             vehicle_count_lane_8, vehicle_count_lane_9, vehicle_count_lane_10, vehicle_count_lane_11]
-        self.state = numpy.array(lanes_observation)
+        self.state = lanes_observation
 
         reward = self.calculate_reward()
 
@@ -148,48 +151,38 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
         traci.start(sumo_cmd, label=self.label)
         self.conn = traci.getConnection(self.label)
 
-        vehicle_count_lane_0 = self.conn.lane.getLastStepVehicleNumber("E0_0")
-        vehicle_count_lane_1 = self.conn.lane.getLastStepVehicleNumber("E0_1")
-        vehicle_count_lane_2 = self.conn.lane.getLastStepVehicleNumber("E0_2")
+        # for reward calculation
+        self.last_waiting_time = 0
 
-        vehicle_count_lane_3 = self.conn.lane.getLastStepVehicleNumber("-E1_0")
-        vehicle_count_lane_4 = self.conn.lane.getLastStepVehicleNumber("-E1_1")
-        vehicle_count_lane_5 = self.conn.lane.getLastStepVehicleNumber("-E1_2")
+        # setting the vehicle count on observing lane as observation
+        lanes_observation = numpy.zeros(int(NUMBER_OF_LANES_TO_OBSERVE))
+        for i, lane in enumerate(self.lanes_to_observe):
+            lanes_observation[i] = self.conn.lane.getLastStepVehicleNumber(lane)
 
-        vehicle_count_lane_6 = self.conn.lane.getLastStepVehicleNumber("-E2_0")
-        vehicle_count_lane_7 = self.conn.lane.getLastStepVehicleNumber("-E2_1")
-        vehicle_count_lane_8 = self.conn.lane.getLastStepVehicleNumber("-E2_2")
-
-        vehicle_count_lane_9  = self.conn.lane.getLastStepVehicleNumber("-E3_0")
-        vehicle_count_lane_10 = self.conn.lane.getLastStepVehicleNumber("-E3_1")
-        vehicle_count_lane_11 = self.conn.lane.getLastStepVehicleNumber("-E3_2")
-
-        lanes_observation = [vehicle_count_lane_0, vehicle_count_lane_1, vehicle_count_lane_2, vehicle_count_lane_3,
-                             vehicle_count_lane_4, vehicle_count_lane_5, vehicle_count_lane_6, vehicle_count_lane_7,
-                             vehicle_count_lane_8, vehicle_count_lane_9, vehicle_count_lane_10, vehicle_count_lane_11]
-        
-        self.state = numpy.array(lanes_observation)
+        self.state = lanes_observation
 
         return self.state
 
-    def calculate_reward(self):
-        waiting_time_lane_0  = self.conn.lane.getWaitingTime("E0_0")
-        waiting_time_lane_1  = self.conn.lane.getWaitingTime("E0_1")
-        waiting_time_lane_2  = self.conn.lane.getWaitingTime("E0_2")
-        waiting_time_lane_3  = self.conn.lane.getWaitingTime("-E1_0")
-        waiting_time_lane_4  = self.conn.lane.getWaitingTime("-E1_1")
-        waiting_time_lane_5  = self.conn.lane.getWaitingTime("-E1_2")
-        waiting_time_lane_6  = self.conn.lane.getWaitingTime("-E2_0")
-        waiting_time_lane_7  = self.conn.lane.getWaitingTime("-E2_1")
-        waiting_time_lane_8  = self.conn.lane.getWaitingTime("-E2_2")
-        waiting_time_lane_9  = self.conn.lane.getWaitingTime("-E3_0")
-        waiting_time_lane_10 = self.conn.lane.getWaitingTime("-E3_1")
-        waiting_time_lane_11 = self.conn.lane.getWaitingTime("-E3_2")
+    def calculate_waiting_time(self) -> float:
+        total_waiting_time = 0
+        for lane in self.lanes_to_observe:
+            total_waiting_time += self.calculate_waiting_time_of_a_lane(lane)
+        return total_waiting_time       
 
-        total_waiting_time = \
-            waiting_time_lane_0 + waiting_time_lane_1 + waiting_time_lane_2 + \
-            waiting_time_lane_3 + waiting_time_lane_4 + waiting_time_lane_5 + \
-            waiting_time_lane_6 + waiting_time_lane_7 + waiting_time_lane_8 + \
-            waiting_time_lane_9 + waiting_time_lane_10 + waiting_time_lane_11
+    def calculate_waiting_time_of_a_lane(self, lane: str) -> float:
+        last_step_vehicles_ids = traci.lane.getLastStepVehicleIDs(lane)
 
-        return 1000 - total_waiting_time
+        waiting_time = 0
+        for vehicle in last_step_vehicles_ids:
+            waiting_time += traci.vehicle.getAccumulatedWaitingTime(vehicle)
+
+        return waiting_time
+
+    def calculate_reward(self) -> float:
+        
+        total_waiting_time = self.calculate_waiting_time()
+
+        decrease_in_waiting_time = self.last_waiting_time - total_waiting_time
+        self.last_waiting_time = total_waiting_time
+
+        return decrease_in_waiting_time
