@@ -23,7 +23,7 @@ import numpy
 from generateRouteFile import generate_routefile
 
 TRAFFIC_INTERSECTION_TYPE="triple"
-TOTAL_TIMESTEPS=50000  # This is the sumo timestep which is somewhat independent of independent of steps in simulation
+TOTAL_TIMESTEPS=50000  # This is the sumo timestep which is somewhat independent of steps in simulation
                        # rather this decides the number of steps in the simulation
 GENERATE_CUSTOM_ROUTE=False
 

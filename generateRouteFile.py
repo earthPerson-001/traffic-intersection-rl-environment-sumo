@@ -2,6 +2,13 @@ from genericpath import exists
 import random
 import os
 
+'''
+This is specifically for double lane 4 way intersection.
+
+The generated route file is network file dependent.
+The network file, small-map-double-lane.rou.xml is used for now
+'''
+
 def generate_routefile(routefile=None):
 
     if(routefile == None):
