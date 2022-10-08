@@ -7,7 +7,6 @@ make it work for general intersection.
 
 For now all the codes is bundled unordered, separated by if else statements.
 
-Remember to change the directories to your local ones.
 '''
 
 
@@ -22,14 +21,6 @@ import numpy
 
 from generateRouteFile import generate_routefile
 
-TRAFFIC_INTERSECTION_TYPE="triple"
-TOTAL_TIMESTEPS=50000  # This is the sumo timestep which is somewhat independent of steps in simulation
-                       # rather this decides the number of steps in the simulation
-GENERATE_CUSTOM_ROUTE=False
-
-YELLOW_TIME = 10
-MIN_GREEN_TIME = 30
-
 # checking for sumo_home variable and exiting if it is not found
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
@@ -42,22 +33,48 @@ import sumo.tools.sumolib as sumolib
 from sumo.tools import traci
 
 import gym
-from custom_gym.envs.custom_env_dir import TrafficIntersectionEnvTripleLaneGUI
 from stable_baselines3 import PPO
 
+import sys
+from pathlib import Path
+import os
 
-# Change the directory to your local ones, absolute paths may work best
-SUMO_DIRECTORY="/home/bishal/Programming/reinforcement-learning-env-gui/sumo-files"
+from custom_gym.envs.custom_env_dir import TrafficIntersectionEnvTripleLaneGUI
 
-net_file=SUMO_DIRECTORY + "/small-map-{}-lane.net.xml".format(TRAFFIC_INTERSECTION_TYPE)
-route_file=SUMO_DIRECTORY + "/test-small-map-{}-lane.rou.xml".format(TRAFFIC_INTERSECTION_TYPE)
-sumocfg_file=SUMO_DIRECTORY + "/small-map-{}-lane.sumocfg".format(TRAFFIC_INTERSECTION_TYPE)
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]  # traffic-intersection-rl-environment-sumo root directory
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))  # add ROOT to PATH
+ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-env = gym.make('TrafficIntersectionEnv{}LaneGUI-v1'.format(TRAFFIC_INTERSECTION_TYPE.capitalize()), sumocfg_file=sumocfg_file, network_file=net_file, route_file=route_file, use_gui=True)
+# constants
+TRAFFIC_INTERSECTION_TYPE="triple"
+TOTAL_TIMESTEPS=50000  # This is the sumo timestep which is somewhat independent of steps in simulation
+                       # rather this decides the number of steps in the simulation
+GENERATE_CUSTOM_ROUTE=False
+
+YELLOW_TIME = 10
+MIN_GREEN_TIME = 30
+
+# environment stuffs
+time_to_teleport = "-1" # setting time to teleport to -1 makes it so that vehicles wont teleport
+use_gui = True # gui
+
+# sumo stuffs
+SUMO_DIRECTORY= Path(str(ROOT) + "/sumo-files").resolve()
+net_file=Path(str(SUMO_DIRECTORY) + "/small-map-{}-lane.net.xml".format(TRAFFIC_INTERSECTION_TYPE)).resolve()
+route_file=Path(str(SUMO_DIRECTORY) + "/small-map-{}-lane.rou.xml".format(TRAFFIC_INTERSECTION_TYPE)).resolve()
+sumocfg_file=Path(str(SUMO_DIRECTORY) + "/small-map-{}-lane.sumocfg".format(TRAFFIC_INTERSECTION_TYPE)).resolve()
+
+env = gym.make('TrafficIntersectionEnv{}LaneGUI-v1'.format(TRAFFIC_INTERSECTION_TYPE.capitalize()), sumocfg_file=sumocfg_file, network_file=net_file, route_file=route_file, use_gui=use_gui)
+
+# path to save the model or load the model from
+models_path = Path(str(ROOT) + "/models").resolve()
 
 # Here, formatting is done as to create error if wrong model is selected
 # as, there won't be same model trained at exact same time and upto same timesteps
-model = PPO.load("/home/bishal/Programming/reinforcement-learning-env-gui/models/2022-08-26 20:31:22.136701-TrafficIntersection-{}LaneGUI-ppo-300000".format(TRAFFIC_INTERSECTION_TYPE.capitalize()))
+model_path = Path(str(models_path) + "/2022-10-08 15:34:31.621671-TrafficIntersection-{}LaneGUI-ppo-2500".format(TRAFFIC_INTERSECTION_TYPE.capitalize())).resolve()
+model = PPO.load(str(model_path))
 
 def run():
     step = 0
@@ -196,7 +213,8 @@ if __name__ == "__main__":
     # subprocess and then the python script connects and runs
     traci.start([sumoBinary,
     "-n", net_file,
-    "-r", route_file])
+    "-r", route_file,
+    "--time-to-teleport", time_to_teleport])
 
     run()
 
