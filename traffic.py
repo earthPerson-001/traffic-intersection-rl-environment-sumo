@@ -7,6 +7,15 @@ make it work for general intersection.
 
 For now all the codes is bundled unordered, separated by if else statements.
 
+For model.predict() the argument is an array of number of vehicles in lanes
+    The order is west, north, east and south
+    The lanes order is from outermost(0) to innermost(2)
+
+    Example: [" E0_0", " E0_1", " E0_2",
+              "-E1_0", "-E1_1", "-E1_2",
+              "-E2_0", "-E2_1", "-E2_2",
+              "-E3_0", "-E3_1", "-E3_2"]
+
 '''
 
 
@@ -39,8 +48,14 @@ import sys
 from pathlib import Path
 import os
 
+# model is enough for prediction so, environment isn't required. 
+# Place this code accordingly if environment is also required for additional training
+'''
 from custom_gym.envs.custom_env_dir import TrafficIntersectionEnvTripleLaneGUI
+env = gym.make('TrafficIntersectionEnv{}LaneGUI-v1'.format(TRAFFIC_INTERSECTION_TYPE.capitalize()), sumocfg_file=sumocfg_file, network_file=net_file, route_file=route_file, use_gui=use_gui)
+'''
 
+# to change to project relative paths and properly resolve paths in different platforms
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # traffic-intersection-rl-environment-sumo root directory
 if str(ROOT) not in sys.path:
@@ -66,14 +81,12 @@ net_file=Path(str(SUMO_DIRECTORY) + "/small-map-{}-lane.net.xml".format(TRAFFIC_
 route_file=Path(str(SUMO_DIRECTORY) + "/small-map-{}-lane.rou.xml".format(TRAFFIC_INTERSECTION_TYPE)).resolve()
 sumocfg_file=Path(str(SUMO_DIRECTORY) + "/small-map-{}-lane.sumocfg".format(TRAFFIC_INTERSECTION_TYPE)).resolve()
 
-env = gym.make('TrafficIntersectionEnv{}LaneGUI-v1'.format(TRAFFIC_INTERSECTION_TYPE.capitalize()), sumocfg_file=sumocfg_file, network_file=net_file, route_file=route_file, use_gui=use_gui)
-
 # path to save the model or load the model from
 models_path = Path(str(ROOT) + "/models").resolve()
 
 # Here, formatting is done as to create error if wrong model is selected
 # as, there won't be same model trained at exact same time and upto same timesteps
-model_path = Path(str(models_path) + "/2022-10-08 15:34:31.621671-TrafficIntersection-{}LaneGUI-ppo-2500".format(TRAFFIC_INTERSECTION_TYPE.capitalize())).resolve()
+model_path = Path(str(models_path) + "/2022_08_26_20_31_22_136701_TrafficIntersection_{}LaneGUI_ppo".format(TRAFFIC_INTERSECTION_TYPE.capitalize())).resolve()
 model = PPO.load(str(model_path))
 
 def run():

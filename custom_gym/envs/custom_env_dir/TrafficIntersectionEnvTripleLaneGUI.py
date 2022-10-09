@@ -1,11 +1,8 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from genericpath import exists
 
 import os
 import sys
-import optparse
-from time import sleep
 
 # checking for sumo_home variable and exiting if it is not found
 if 'SUMO_HOME' in os.environ:
@@ -51,6 +48,9 @@ class TrafficIntersectionEnvTripleLaneGUI(gym.Env):
         self.max_green = max_green
         self.yellow_time = yellow_time
 
+        # The lanes are in order as defined in the network file, changing the order tampers with the observation
+        # The order is from west, north, east and south
+        # The lanes order is from outermost(0) to innermost(2)
         self.lanes_to_observe = ["E0_0", "E0_1", "E0_2",
                                  "-E1_0", "-E1_1", "-E1_2",
                                  "-E2_0", "-E2_1", "-E2_2",
