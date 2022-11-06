@@ -2,6 +2,9 @@ from genericpath import exists
 import random
 import os
 
+# constants
+NUMBER_OF_TIME_STEPS: int = 100000
+
 def generate_routefile(routefile=None):
 
     if(routefile == None):
@@ -13,7 +16,7 @@ def generate_routefile(routefile=None):
         routefile = routefilePath + "random-route.rou.xml"
 
     # random.seed(42)  # make tests reproducible
-    N = 100000  # number of time steps
+    N = NUMBER_OF_TIME_STEPS  # number of time steps
     # demand per second from different directions
     
     pWN = 1. / 80

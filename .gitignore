@@ -175,3 +175,6 @@ pyvenv.cfg
 
 # sumo route files [ excludes only the randomly generated route files while training
 *.0-route.rou.xml 
+
+# logging outputs
+logging_outputs/*

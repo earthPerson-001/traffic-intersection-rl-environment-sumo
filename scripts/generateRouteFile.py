@@ -1,6 +1,8 @@
 from genericpath import exists
 import random
 import os
+from pathlib import Path
+import sys
 
 '''
 This is specifically for double lane 4 way intersection.
@@ -9,18 +11,26 @@ The generated route file is network file dependent.
 The network file, small-map-double-lane.rou.xml is used for now
 '''
 
+# constants
+NUMBER_OF_TIME_STEPS: int = 100000
+
 def generate_routefile(routefile=None):
 
     if(routefile == None):
-        routefilePath = os.getcwd() + "/sumo-files/"
+
+        # to change to project relative paths and properly resolve paths in different platforms
+        FILE = Path(__file__).resolve()
+        ROOT = FILE.parents[1]  # traffic-intersection-rl-environment-sumo root directory
+
+        routefilePath = ROOT.joinpath("sumo-files/").resolve()
 
         if not exists(routefilePath):
             os.mkdir(routefilePath)
         
-        routefile = routefilePath + "random-route.rou.xml"
+        routefile = routefilePath.joinpath("random-route.rou.xml").resolve().__str__()
 
     # random.seed(42)  # make tests reproducible
-    N = 100000  # number of time steps
+    N = NUMBER_OF_TIME_STEPS  # number of time steps
     # demand per second from different directions
     
     pWN = 1. / 21
