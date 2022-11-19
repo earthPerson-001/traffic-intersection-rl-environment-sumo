@@ -1,5 +1,7 @@
 # traffic-intersection-rl-environment-sumo
 
+## Further updates to this repo will be on [Autoffic Organization repo](https://github.com/Autoffic/rl-environment)
+
 ## Meeting Requirements
 `pip install -r requirements.txt`
 
